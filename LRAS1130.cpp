@@ -1,7 +1,7 @@
 //
 // Lucky Resistor's AS1130 Library
 // ---------------------------------------------------------------------------
-// (c)2016 by Lucky Resistor. See LICENSE for details.
+// (c)2017 by Lucky Resistor. See LICENSE for details.
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -24,6 +24,30 @@
 #include <cstring>
 
 
+/// @mainpage
+///
+/// @section intro_sec Introduction
+///
+/// This library contains a class for a simple access to the AS1130 chip. 
+/// The goal behind the library is to create a compact layer which will
+/// generate simple and easy to understand code without adding too much
+/// complexity and size to the final project.
+///
+/// @section requirements_sec Requirements
+///
+/// This library is writte for Arduino compatible chips. It requires a 
+/// modern C++ compiler (C++11). The code also uses the "Wire" library 
+/// from the Arduino project for the I2C communication.
+///
+/// @section classes_sec Classes
+///
+/// There is only the lr::AS1130 class. Read the documentation of this class
+/// for all details.
+///
+
+
+/// @brief The namespace for all Lucky Resistor classes and types.
+///
 namespace lr {
 
 
@@ -194,11 +218,7 @@ void AS1130::setScanLimit(ScanLimit scanLimit)
 
 void AS1130::setBlinkEnabled(bool enabled)
 {
-  if (enabled) {
-    clearControlRegisterBits(CR_MovieMode, MMF_BlinkEnabled);
-  } else {
-    setControlRegisterBits(CR_MovieMode, MMF_BlinkEnabled);
-  }
+  setOrClearControlRegisterBits(CR_MovieMode, MMF_BlinkEnabled, !enabled);
 }
 
 
@@ -221,11 +241,7 @@ void AS1130::stopPicture()
 
 void AS1130::setMovieEndFrame(MovieEndFrame movieEndFrame)
 {
-  if (movieEndFrame == MovieEndWithFirstFrame) {
-    clearControlRegisterBits(CR_MovieMode, MMF_EndLast);
-  } else {
-    setControlRegisterBits(CR_MovieMode, MMF_EndLast);
-  }
+  setOrClearControlRegisterBits(CR_MovieMode, MMF_EndLast, movieEndFrame == MovieEndWithLastFrame);
 }
 
 
@@ -248,51 +264,31 @@ void AS1130::setFrameDelayMs(uint16_t delayMs)
 
 void AS1130::setScrollingEnabled(bool enable)
 {
-  if (enable) {
-    setControlRegisterBits(CR_FrameTimeScroll, FTSF_EnableScrolling);
-  } else {
-    clearControlRegisterBits(CR_FrameTimeScroll, FTSF_EnableScrolling);
-  }
+  setOrClearControlRegisterBits(CR_FrameTimeScroll, FTSF_EnableScrolling, enable);
 }
 
 
 void AS1130::setScrollingBlockSize(ScrollingBlockSize scrollingBlockSize)
 {
-  if (scrollingBlockSize == ScrollIn5LedBlocks) {
-    setControlRegisterBits(CR_FrameTimeScroll, FTSF_BlockSize);
-  } else {
-    clearControlRegisterBits(CR_FrameTimeScroll, FTSF_BlockSize);
-  }
+  setOrClearControlRegisterBits(CR_FrameTimeScroll, FTSF_BlockSize, scrollingBlockSize == ScrollIn5LedBlocks);
 }
 
 
 void AS1130::setScrollingDirection(ScrollingDirection scrollingDirection)
 {
-  if (scrollingDirection == ScrollingLeft) {
-    setControlRegisterBits(CR_FrameTimeScroll, FTSF_ScrollDirection);
-  } else {
-    setControlRegisterBits(CR_FrameTimeScroll, FTSF_ScrollDirection);
-  }
+  setOrClearControlRegisterBits(CR_FrameTimeScroll, FTSF_ScrollDirection, scrollingDirection == ScrollingLeft);
 }
 
 
 void AS1130::setFrameFadingEnabled(bool enable)
 {
-  if (enable) {
-    setControlRegisterBits(CR_FrameTimeScroll, FTSF_FrameFade);
-  } else {
-    clearControlRegisterBits(CR_FrameTimeScroll, FTSF_FrameFade);
-  }
+  setOrClearControlRegisterBits(CR_FrameTimeScroll, FTSF_FrameFade, enable);
 }
 
 
 void AS1130::setBlinkFrequency(BlinkFrequency blinkFrequency)
 {
-  if (blinkFrequency == BlinkFrequency3s) {
-    setControlRegisterBits(CR_DisplayOption, DOF_BlinkFrequency);
-  } else {
-    clearControlRegisterBits(CR_DisplayOption, DOF_BlinkFrequency);
-  }
+  setOrClearControlRegisterBits(CR_DisplayOption, DOF_BlinkFrequency, blinkFrequency == BlinkFrequency3s);
 }
 
 
@@ -319,6 +315,42 @@ void AS1130::stopMovie()
 }
 
 
+void AS1130::setLowVddResetEnabled(bool enabled)
+{
+  setOrClearControlRegisterBits(CR_Config, CF_LowVddReset, enabled);
+}
+
+
+void AS1130::setLowVddStatusEnabled(bool enabled)
+{
+  setOrClearControlRegisterBits(CR_Config, CF_LowVddStatus, enabled);
+}
+
+
+void AS1130::setLedErrorCorrectionEnabled(bool enabled)
+{
+  setOrClearControlRegisterBits(CR_Config, CF_LedErrorCorrection, enabled);
+}
+
+
+void AS1130::setDotCorrectionEnabled(bool enabled)
+{
+  setOrClearControlRegisterBits(CR_Config, CF_DotCorrection, enabled);
+}
+
+
+void AS1130::setTestAllLedsEnabled(bool enabled)
+{
+  setOrClearControlRegisterBits(CR_ShutdownAndOpenShort, SOSF_TestAll, enabled);
+}
+
+
+void AS1130::setAutomaticTestEnabled(bool enabled)
+{
+  setOrClearControlRegisterBits(CR_ShutdownAndOpenShort, SOSF_AutoTest, enabled);
+}
+
+
 void AS1130::startChip()
 {
   setControlRegisterBits(CR_ShutdownAndOpenShort, SOSF_Shutdown);
@@ -328,6 +360,62 @@ void AS1130::startChip()
 void AS1130::stopChip()
 {
   clearControlRegisterBits(CR_ShutdownAndOpenShort, SOSF_Shutdown);
+}
+
+
+void AS1130::runManualTest()
+{
+  setControlRegisterBits(CR_ShutdownAndOpenShort, SOSF_ManualTest);
+  while (isLedTestRunning()) {
+    delay(10);
+  }
+  clearControlRegisterBits(CR_ShutdownAndOpenShort, SOSF_ManualTest);
+}
+
+
+AS1130::LedStatus AS1130::getLedStatus(uint8_t ledIndex)
+{
+  if (ledIndex > 0xba) {
+    return LedStatusDisabled;
+  }
+  if ((ledIndex & 0x0f) > 0xa) {
+    return LedStatusDisabled;
+  }
+  const uint8_t ledBitMask = (1<<(ledIndex&0x7));
+  const uint8_t registerIndex = CR_OpenLedBase + (ledIndex>>3);
+  const uint8_t mask = readFromMemory(RS_Control, registerIndex);
+  if ((mask & ledBitMask) == 0) {
+    return LedStatusOpen;
+  } else {
+    return LedStatusOk;
+  }
+}
+
+
+bool AS1130::isLedTestRunning()
+{
+  const uint8_t data = readControlRegister(CR_Status);
+  return (data & SF_TestOn) != 0;
+}
+
+
+bool AS1130::isMovieRunning()
+{
+  const uint8_t data = readControlRegister(CR_Status);
+  return (data & SF_MovieOn) != 0;
+}
+
+
+uint8_t AS1130::getDisplayedFrame()
+{
+  const uint8_t data = readControlRegister(CR_Status);
+  return (data>>2);
+}
+
+
+uint8_t AS1130::getInterruptStatus()
+{
+  return readControlRegister(CR_InterruptStatus);
 }
 
 
@@ -393,6 +481,16 @@ void AS1130::setControlRegisterBits(ControlRegister controlRegister, uint8_t mas
 void AS1130::clearControlRegisterBits(ControlRegister controlRegister, uint8_t mask)
 {
   writeControlRegisterBits(controlRegister, mask, 0);
+}
+
+
+void AS1130::setOrClearControlRegisterBits(ControlRegister controlRegister, uint8_t mask, bool setBits)
+{
+  if (setBits) {
+    writeControlRegisterBits(controlRegister, mask, mask);
+  } else {
+    writeControlRegisterBits(controlRegister, mask, 0);
+  }
 }
 
 
