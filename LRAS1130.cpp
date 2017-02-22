@@ -21,7 +21,14 @@
 
 #include <Arduino.h>
 
+
+#ifdef ARDUINO_ARCH_AVR
+// Make it compatible with the standart
+#include <string.h>
+namespace std { using ::memset; } 
+#else
 #include <cstring>
+#endif
 
 
 /// @mainpage

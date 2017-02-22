@@ -21,7 +21,11 @@
 
 #include <Wire.h>
 
+#ifdef ARDUINO_ARCH_AVR
+#include <inttypes.h>
+#else
 #include <cinttypes>
+#endif
 
 
 namespace lr {
