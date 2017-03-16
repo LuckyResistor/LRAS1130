@@ -26,6 +26,7 @@
 // Make it compatible with the standart
 #include <string.h>
 namespace std { using ::memset; } 
+namespace std { using ::memcpy; }
 #else
 #include <cstring>
 #endif
@@ -69,7 +70,6 @@ const uint8_t cRegisterSelectionAddress = 0xfd;
 }
 
 
-
 AS1130::AS1130(ChipAddress chipAddress)
   : _chipAddress(chipAddress)
 {
@@ -91,50 +91,65 @@ void AS1130::setRamConfiguration(RamConfiguration ramConfiguration)
 }
 
 
-namespace {
-
-// Set the LED in the frame register.
-//
-inline void setOnOffFrameBit(uint8_t index, uint8_t *data) {
-  const uint8_t segmentIndex = (index/10);
-  const uint8_t segmentLed = (index%10);
-  const uint8_t bitToSet = (1<<(segmentLed&0x7));
-  uint8_t *target = data + (segmentIndex*2);
-  if (segmentLed >= 8) {
-    ++target;
-  }
-  *target |= bitToSet;
+void AS1130::setOnOffFrame(uint8_t frameIndex, const AS1130Picture12x11 &picture, uint8_t pwmSetIndex)
+{
+  // Prepare all register bytes.
+  const uint8_t registerDataSize = 0x18;
+  uint8_t registerData[registerDataSize];
+  AS1130Picture12x11::writeRegisters(registerData, picture.getData(), pwmSetIndex);
+  // Write the bytes
+  const uint8_t frameAddress = (RS_OnOffFrame + frameIndex);
+  writeToMemory(frameAddress, 0x00, registerData, registerDataSize);
 }
 
-// Check if in the definition bit mask a bit at the given coordinates is set.
-//
-inline bool isMaskBitSet(uint8_t x, uint8_t y, const uint8_t *data) {
-  const uint8_t *source = data + (y*3) + (x>>3);
-  const uint8_t bitToTest = (1<<(7-(x&7)));
-  return (*source & bitToTest) != 0;
-}
 
+void AS1130::setOnOffFrame(uint8_t frameIndex, const AS1130Picture24x5 &picture, uint8_t pwmSetIndex)
+{
+  // Prepare all register bytes.
+  const uint8_t registerDataSize = 0x18;
+  uint8_t registerData[registerDataSize];
+  AS1130Picture24x5::writeRegisters(registerData, picture.getData(), pwmSetIndex);
+  // Write the bytes
+  const uint8_t frameAddress = (RS_OnOffFrame + frameIndex);
+  writeToMemory(frameAddress, 0x00, registerData, registerDataSize);
 }
 
 
 void AS1130::setOnOffFrame24x5(uint8_t frameIndex, const uint8_t *data, uint8_t pwmSetIndex)
 {
-  // Prepare all frame bytes.
-  const uint8_t finalDataSize = 0x18;
-  uint8_t finalData[finalDataSize];
-  std::memset(finalData, 0, finalDataSize);
-  finalData[1] = (pwmSetIndex<<5);
-  for (uint8_t y = 0; y < 5; ++y) {
-    for (uint8_t x = 0; x < 24; ++x) {
-      const uint8_t ledIndex = y + (5 * x);
-      if (isMaskBitSet(x, y, data)) {
-        setOnOffFrameBit(ledIndex, finalData);
-      }
-    }
-  }
+  // Prepare all register bytes.
+  const uint8_t registerDataSize = 0x18;
+  uint8_t registerData[registerDataSize];
+  AS1130Picture24x5::writeRegisters(registerData, data, pwmSetIndex);
   // Write the bytes
   const uint8_t frameAddress = (RS_OnOffFrame + frameIndex);
-  writeToMemory(frameAddress, 0x00, finalData, finalDataSize);
+  writeToMemory(frameAddress, 0x00, registerData, registerDataSize);
+}
+
+
+void AS1130::setOnOffFrame12x11(uint8_t frameIndex, const uint8_t *data, uint8_t pwmSetIndex)
+{
+  // Prepare all register bytes.
+  const uint8_t registerDataSize = 0x18;
+  uint8_t registerData[registerDataSize];
+  AS1130Picture12x11::writeRegisters(registerData, data, pwmSetIndex);
+  // Write the bytes
+  const uint8_t frameAddress = (RS_OnOffFrame + frameIndex);
+  writeToMemory(frameAddress, 0x00, registerData, registerDataSize);
+}
+
+
+void AS1130::setOnOffFrameAllOff(uint8_t frameIndex, uint8_t pwmSetIndex)
+{
+  const uint8_t frameAddress = (RS_OnOffFrame + frameIndex);
+  // Prepare all frame bytes.
+  const uint8_t registerDataSize = 0x18;
+  uint8_t registerData[registerDataSize];
+  std::memset(registerData, 0, registerDataSize);
+  // Write the first segment with the PWM set index.
+  registerData[1] = (pwmSetIndex<<5);
+  // Send to chip.
+  writeToMemory(frameAddress, 0x00, registerData, registerDataSize);
 }
 
 
@@ -142,18 +157,18 @@ void AS1130::setOnOffFrameAllOn(uint8_t frameIndex, uint8_t pwmSetIndex)
 {
   const uint8_t frameAddress = (RS_OnOffFrame + frameIndex);
   // Prepare all frame bytes.
-  const uint8_t finalDataSize = 0x18;
-  uint8_t finalData[finalDataSize];
+  const uint8_t registerDataSize = 0x18;
+  uint8_t registerData[registerDataSize];
   // Write the first segment with the PWM set index.
-  finalData[0] = 0xff;
-  finalData[1] = (pwmSetIndex<<5)|0x03;
+  registerData[0] = 0xff;
+  registerData[1] = (pwmSetIndex<<5)|0x03;
   // Write all other segments 
   for (uint8_t i = 1; i < 12; ++i) {
-    finalData[i*2] = 0xff;
-    finalData[i*2+1] = 0x07;
+    registerData[i*2] = 0xff;
+    registerData[i*2+1] = 0x07;
   }
   // Send to chip.
-  writeToMemory(frameAddress, 0x00, finalData, finalDataSize);
+  writeToMemory(frameAddress, 0x00, registerData, registerDataSize);
 }
 
 
@@ -181,6 +196,12 @@ void AS1130::setPwmValue(uint8_t setIndex, uint8_t ledIndex, uint8_t value)
 uint8_t AS1130::getLedIndex24x5(uint8_t x, uint8_t y)
 {
   return ((x>>1)*0x10) + ((x&1)*5) + y; 
+}
+
+
+uint8_t AS1130::getLedIndex12x11(uint8_t x, uint8_t y)
+{
+  return y+(x*0x10);
 }
 
 

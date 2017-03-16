@@ -19,6 +19,9 @@
 #pragma once
 
 
+#include "LRAS1130Picture12x11.h"
+#include "LRAS1130Picture24x5.h"
+
 #include <Wire.h>
 
 #ifdef ARDUINO_ARCH_AVR
@@ -340,6 +343,28 @@ public: // High-level functions.
   ///
   void setRamConfiguration(RamConfiguration ramConfiguration);
 
+  /// @brief Set-up a on/off frame.
+  ///
+  /// @param frameIndex The index of the frame. This has to be a value between 0 and 35. Depending 
+  ///   on your RAM configuration this can be less. The frame number is not checked to be
+  ///   valid. See the RAM configuration for details.
+  /// @param pwmSetIndex The PWM set index for this frame. It has to be a value between 0 and 7
+  ///   selecting one of the PWM sets.
+  /// @param picture The picture to write into the frame.
+  ///
+  void setOnOffFrame(uint8_t frameIndex, const AS1130Picture12x11 &picture, uint8_t pwmSetIndex = 0);
+  
+  /// @brief Set-up a on/off frame.
+  ///
+  /// @param frameIndex The index of the frame. This has to be a value between 0 and 35. Depending 
+  ///   on your RAM configuration this can be less. The frame number is not checked to be
+  ///   valid. See the RAM configuration for details.
+  /// @param pwmSetIndex The PWM set index for this frame. It has to be a value between 0 and 7
+  ///   selecting one of the PWM sets.
+  /// @param picture The picture to write into the frame.
+  ///
+  void setOnOffFrame(uint8_t frameIndex, const AS1130Picture24x5 &picture, uint8_t pwmSetIndex = 0);
+
   /// @brief Set-up a on/off frame with data.
   ///
   /// This function is written for a 24x5 LED matrix. You have to specify 15 bytes of data.
@@ -358,11 +383,35 @@ public: // High-level functions.
   /// @param frameIndex The index of the frame. This has to be a value between 0 and 35. Depending 
   ///   on your RAM configuration this can be less. The frame number is not checked to be
   ///   valid. See the RAM configuration for details.
-  /// @param pwmSetIndex The PWM set index for this frame. It has to a value between 0 and 7
+  /// @param pwmSetIndex The PWM set index for this frame. It has to be a value between 0 and 7
   ///   selecting one of the PWM sets.
   /// @param data An array with 15 bytes. Each set bit will enable the corresponding LED.
   ///
   void setOnOffFrame24x5(uint8_t frameIndex, const uint8_t *data, uint8_t pwmSetIndex = 0);
+
+  /// @brief Set-up a on/off frame with data.
+  ///
+  /// This function is written for a 12x11 LED matrix. You have to specify 17 bytes of data.
+  /// The bits are specified horizontally as shown below.
+  ///
+  /// Bits: 01234567 89AB0123 456789AB ...
+  ///
+  /// @param frameIndex The index of the frame. This has to be a value between 0 and 35. Depending 
+  ///   on your RAM configuration this can be less. The frame number is not checked to be
+  ///   valid. See the RAM configuration for details.
+  /// @param pwmSetIndex The PWM set index for this frame. It has to be a value between 0 and 7
+  ///   selecting one of the PWM sets.
+  /// @param data An array with 17 bytes. Each set bit will enable the corresponding LED.
+  ///
+  void setOnOffFrame12x11(uint8_t frameIndex, const uint8_t *data, uint8_t pwmSetIndex = 0);
+
+  /// @brief Set-up a on/off frame with all LEDs disabled.
+  ///
+  /// @param frameIndex The index of the frame. This has to be a value between 0 and 35.
+  /// @param pwmSetIndex The PWM set index for this frame. It has to a value between 0 and 7
+  ///   selecting one of the PWM sets.
+  ///
+  void setOnOffFrameAllOff(uint8_t frameIndex, uint8_t pwmSetIndex = 0);
 
   /// @brief Set-up a on/off frame with all LEDs enabled.
   ///
@@ -392,11 +441,25 @@ public: // High-level functions.
 
   /// @brief Get the LED index for a coordinate in a 24x5 LED setup.
   ///
+  /// @warning There is no range check done for the coordinates. Values outside
+  ///   of the allowed range will result in a undefined return value.
+  ///
   /// @param x The X coordinate from 0 to 23.
   /// @param y The Y coordinate from 0 to 4.
   /// @return The LED index.
   ///
   uint8_t getLedIndex24x5(uint8_t x, uint8_t y);
+
+  /// @brief Get the LED index for a coordinate in a 12x11 LED setup.
+  ///
+  /// @warning There is no range check done for the coordinates. Values outside
+  ///   of the allowed range will result in a undefined return value.
+  ///
+  /// @param x The X coordinate from 0 to 11.
+  /// @param y The Y coordinate from 0 to 10.
+  /// @return The LED index.
+  ///
+  uint8_t getLedIndex12x11(uint8_t x, uint8_t y);
 
   /// @brief Set the dot correction data.
   ///
