@@ -382,6 +382,22 @@ public: // High-level functions.
   ///
   void setBlinkAndPwmSetAll(uint8_t setIndex, bool doesBlink = false, uint8_t pwmValue = 0xff);
 
+  /// @brief Set a PWM value in a given blink&PWM set.
+  ///
+  /// @param setIndex The set index has to be a value between 0 and 5.
+  /// @param ledIndex The index of the LED. A value between 0x00 and 0xba.
+  /// @param value The PWM value between 0x00 and 0xff.
+  ///
+  void setPwmValue(uint8_t setIndex, uint8_t ledIndex, uint8_t value);
+
+  /// @brief Get the LED index for a coordinate in a 24x5 LED setup.
+  ///
+  /// @param x The X coordinate from 0 to 23.
+  /// @param y The Y coordinate from 0 to 4.
+  /// @return The LED index.
+  ///
+  uint8_t getLedIndex24x5(uint8_t x, uint8_t y);
+
   /// @brief Set the dot correction data.
   ///
   /// This correction data is a correction factor for all 12 segments of the display.
@@ -649,6 +665,24 @@ public:
   /// @param data The data byte to write to the selected register.
   ///
   void writeToMemory(uint8_t registerSelection, uint8_t address, uint8_t data);
+
+  /// @brief Write a block of data to a given memory location.
+  ///
+  /// @param registerSelection The register selection address.
+  /// @param startAddress The address of the register.
+  /// @param data A pointer to the start of the data to write.
+  /// @param size The number of bytes to write.
+  ///
+  void writeToMemory(uint8_t registerSelection, uint8_t address, const uint8_t *data, uint8_t size);
+
+  /// @brief Fill a memory location block with a single byte/
+  ///
+  /// @param registerSelection The register selection address.
+  /// @param startAddress The address of the register.
+  /// @param value The value to write.
+  /// @param size The number of bytes to write.
+  ///
+  void fillMemory(uint8_t registerSelection, uint8_t address, uint8_t value, uint8_t size);
 
   /// @brief Read a byte from a given memory location.
   ///

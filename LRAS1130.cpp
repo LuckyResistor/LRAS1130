@@ -134,43 +134,53 @@ void AS1130::setOnOffFrame24x5(uint8_t frameIndex, const uint8_t *data, uint8_t 
   }
   // Write the bytes
   const uint8_t frameAddress = (RS_OnOffFrame + frameIndex);
-  for (uint8_t i = 0; i < finalDataSize; ++i) {
-    writeToMemory(frameAddress, i, finalData[i]);
-  }
+  writeToMemory(frameAddress, 0x00, finalData, finalDataSize);
 }
 
 
 void AS1130::setOnOffFrameAllOn(uint8_t frameIndex, uint8_t pwmSetIndex)
 {
   const uint8_t frameAddress = (RS_OnOffFrame + frameIndex);
+  // Prepare all frame bytes.
+  const uint8_t finalDataSize = 0x18;
+  uint8_t finalData[finalDataSize];
   // Write the first segment with the PWM set index.
-  writeToMemory(frameAddress, 0, 0xff);
-  writeToMemory(frameAddress, 1, (pwmSetIndex<<5)|0x03);
+  finalData[0] = 0xff;
+  finalData[1] = (pwmSetIndex<<5)|0x03;
   // Write all other segments 
   for (uint8_t i = 1; i < 12; ++i) {
-    writeToMemory(frameAddress, i*2, 0xff);
-    writeToMemory(frameAddress, i*2+1, 0x07);
+    finalData[i*2] = 0xff;
+    finalData[i*2+1] = 0x07;
   }
+  // Send to chip.
+  writeToMemory(frameAddress, 0x00, finalData, finalDataSize);
 }
 
 
 void AS1130::setBlinkAndPwmSetAll(uint8_t setIndex, bool doesBlink, uint8_t pwmValue)
 {
   const uint8_t setAddress = (RS_BlinkAndPwmSet + setIndex);
-  // Disable all blink flags.
-  for (uint8_t i = 0; i < 12; ++i) {
-    if (doesBlink) {
-      writeToMemory(setAddress, i*2, 0xff);
-      writeToMemory(setAddress, i*2+1, 0x07);
-    } else {
-      writeToMemory(setAddress, i*2, 0x00);
-      writeToMemory(setAddress, i*2+1, 0x00);
-    }
+  if (doesBlink) {
+    fillMemory(setAddress, 0x00, 0xff, 24);
+  } else {
+    fillMemory(setAddress, 0x00, 0x00, 24);
   }
   // Set all PWM values to the maximum.
-  for (uint8_t i = 0x18; i < 0x9c; ++i) {
-    writeToMemory(setAddress, i, pwmValue);
-  }
+  fillMemory(setAddress, 0x18, pwmValue, 132);
+}
+
+
+void AS1130::setPwmValue(uint8_t setIndex, uint8_t ledIndex, uint8_t value)
+{
+  const uint8_t setAddress = (RS_BlinkAndPwmSet + setIndex);
+  const uint8_t address = 0x18 + ((ledIndex>>4)*11) + (ledIndex&0xf);
+  writeToMemory(setAddress, address, value);
+}
+
+
+uint8_t AS1130::getLedIndex24x5(uint8_t x, uint8_t y)
+{
+  return ((x>>1)*0x10) + ((x&1)*5) + y; 
 }
 
 
@@ -370,6 +380,13 @@ void AS1130::stopChip()
 }
 
 
+void AS1130::resetChip()
+{
+  clearControlRegisterBits(CR_ShutdownAndOpenShort, SOSF_Initialize);
+  delay(100);
+}
+
+
 void AS1130::runManualTest()
 {
   setControlRegisterBits(CR_ShutdownAndOpenShort, SOSF_ManualTest);
@@ -439,6 +456,30 @@ void AS1130::writeToMemory(uint8_t registerSelection, uint8_t address, uint8_t d
 {
   writeToChip(cRegisterSelectionAddress, registerSelection);
   writeToChip(address, data);
+}
+
+
+void AS1130::writeToMemory(uint8_t registerSelection, uint8_t address, const uint8_t *data, uint8_t size)
+{
+  writeToChip(cRegisterSelectionAddress, registerSelection);
+  Wire.beginTransmission(_chipAddress);
+  Wire.write(address); 
+  for (uint8_t i = 0; i < size; ++i) {
+    Wire.write(data[i]);
+  }  
+  Wire.endTransmission();   
+}
+
+
+void AS1130::fillMemory(uint8_t registerSelection, uint8_t address, uint8_t value, uint8_t size)
+{
+  writeToChip(cRegisterSelectionAddress, registerSelection);
+  Wire.beginTransmission(_chipAddress);
+  Wire.write(address); 
+  for (uint8_t i = 0; i < size; ++i) {
+    Wire.write(value);
+  }  
+  Wire.endTransmission();   
 }
 
 
