@@ -18,8 +18,8 @@
 //
 #include "LRAS1130.h"
 
-/// @example DisplayPicture.ino
-/// This is an example how to display a static picture.
+/// @example ScrollPictures.ino
+/// This is an example how to scroll multiple frames.
 
 using namespace lr;
 AS1130 ledDriver;
@@ -31,6 +31,21 @@ const uint8_t exampleFrame1[] = {
   0b10001010, 0b00101000, 0b00000001,
   0b10001010, 0b00101000, 0b00000001,
   0b11111011, 0b11101111, 0b11111111};
+
+const uint8_t exampleFrame2[] = {
+  0b10000000, 0b10000000, 0b10000000,
+  0b01000001, 0b01000001, 0b01000001,
+  0b00100010, 0b00100010, 0b00100010,
+  0b00010100, 0b00010100, 0b00010100,
+  0b00001000, 0b00001000, 0b00001000};
+
+const uint8_t exampleFrame3[] = {
+  0b00000000, 0b00000000, 0b00000000,
+  0b00000000, 0b00111100, 0b00000000,
+  0b00000000, 0b00100100, 0b00000000,
+  0b00000000, 0b00111100, 0b00000000,
+  0b00000000, 0b00000000, 0b00000000};
+
 
 void setup() {
   Wire.begin();
@@ -50,10 +65,18 @@ void setup() {
   // Set-up everything.
   ledDriver.setRamConfiguration(AS1130::RamConfiguration1);
   ledDriver.setOnOffFrame24x5(0, exampleFrame1);
+  ledDriver.setOnOffFrame24x5(1, exampleFrame2);
+  ledDriver.setOnOffFrame24x5(2, exampleFrame3);
+  ledDriver.setOnOffFrame24x5(3, exampleFrame2);
   ledDriver.setBlinkAndPwmSetAll(0);
   ledDriver.setCurrentSource(AS1130::Current30mA);
   ledDriver.setScanLimit(AS1130::ScanLimitFull);
-  ledDriver.startPicture(0);
+  ledDriver.setMovieEndFrame(AS1130::MovieEndWithFirstFrame);
+  ledDriver.setMovieFrameCount(4);
+  ledDriver.setFrameDelayMs(100);
+  ledDriver.setMovieLoopCount(AS1130::MovieLoop6);
+  ledDriver.setScrollingEnabled(true);
+  ledDriver.startMovie(0);
   
   // Enable the chip
   ledDriver.startChip();
