@@ -81,7 +81,7 @@ void AS1130Picture12x11::writeRegisters(uint8_t *registerData, const uint8_t *ra
       }
     }
   }
-  registerData[1] = (pwmSetIndex<<5);
+  registerData[1] |= (pwmSetIndex<<5);
 }
 
 
