@@ -74,8 +74,8 @@ bool AS1130Picture12x11::getPixel(uint8_t x, uint8_t y)
 void AS1130Picture12x11::writeRegisters(uint8_t *registerData, const uint8_t *rawData, uint8_t pwmSetIndex)
 {
   std::memset(registerData, 0, 0x18);
-  for (uint8_t x = 0; x < getWidth(); x++) {
-    for (uint8_t y = 0; y < getHeight(); y++) {
+  for (uint8_t x = 0; x < getWidth(); ++x) {
+    for (uint8_t y = 0; y < getHeight(); ++y) {
       if ((rawData[getDataIndex(x, y)] & getDataBit(x,y)) != 0) {
         registerData[(x*2)+(y/8)] |= (1<<(x&7));
       }
