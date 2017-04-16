@@ -67,6 +67,10 @@ namespace {
 const uint8_t cRegisterSelectionAddress = 0xfd;
 
   
+/// Use buffer length defined by the Wire library to send data in blocks
+///
+const uint8_t cMaxWireDataBytes = BUFFER_LENGTH - 2;
+
 }
 
 
@@ -495,12 +499,15 @@ void AS1130::writeToMemory(uint8_t registerSelection, uint8_t address, const uin
 void AS1130::fillMemory(uint8_t registerSelection, uint8_t address, uint8_t value, uint8_t size)
 {
   writeToChip(cRegisterSelectionAddress, registerSelection);
-  Wire.beginTransmission(_chipAddress);
-  Wire.write(address); 
-  for (uint8_t i = 0; i < size; ++i) {
-    Wire.write(value);
-  }  
-  Wire.endTransmission();   
+  while (size > 0) {
+    Wire.beginTransmission(_chipAddress);
+    Wire.write(address);
+    for (uint8_t i = 0; size > 0 && i < cMaxWireDataBytes; ++i, --size) {
+      Wire.write(value);
+    }
+    address += cMaxWireDataBytes;
+    Wire.endTransmission();
+  }
 }
 
 
