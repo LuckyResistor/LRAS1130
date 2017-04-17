@@ -495,12 +495,31 @@ void AS1130::writeToMemory(uint8_t registerSelection, uint8_t address, const uin
 void AS1130::fillMemory(uint8_t registerSelection, uint8_t address, uint8_t value, uint8_t size)
 {
   writeToChip(cRegisterSelectionAddress, registerSelection);
-  Wire.beginTransmission(_chipAddress);
-  Wire.write(address); 
-  for (uint8_t i = 0; i < size; ++i) {
-    Wire.write(value);
-  }  
-  Wire.endTransmission();   
+  while (size > 0) {
+    Wire.beginTransmission(_chipAddress);
+    if (Wire.write(address) == 0) {
+      // With failed address write, there is not much chance to do
+      // anything useful, so this just finishes the transmission
+      // and returns, leaving the error state set in the Wire
+      // library.
+      Wire.endTransmission();
+      return;
+    }
+
+    // Send as much bytes as possible in one loop, by default the
+    // Arduino Wire library has a 32 byte buffer, so we can send
+    // a maximum of 31 data bytes at once (in addition to the
+    // address byte).
+    while (size > 0) {
+      if (Wire.write(value) == 0) {
+        Wire.clearWriteError();
+        break;
+      }
+      size--;
+      address++;
+    }
+    Wire.endTransmission();
+  }
 }
 
 
